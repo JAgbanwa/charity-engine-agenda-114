@@ -1,0 +1,29 @@
+version: "3.8"
+services:
+  infinite-search:
+    build: .
+    image: infinite-search:local
+    container_name: infinite-search
+    restart: unless-stopped
+    environment:
+      - CONTAINER_ID=0
+      - TOTAL_CONTAINERS=10000
+      - JUMP_SIZE=1000000
+      - PYTHONUNBUFFERED=1
+      # SCRIPT defaults to the workspace file named "improved code"; can override if desired
+      - SCRIPT=improved code
+    volumes:
+      - ./data/container_0:/app
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 4G
+    ulimits:
+      nofile: 65536
+    pids_limit: 2048
+    # Optional: remove network access if not needed
+    # network_mode: none
