@@ -13,7 +13,8 @@ services:
       # SCRIPT defaults to the workspace file named "improved code"; can override if desired
       - SCRIPT=improved code
     volumes:
-      - ./data/container_0:/app
+      # Mount a host directory to /data so the image's /app remains available at startup.
+      - ./data/container_0:/data
     deploy:
       resources:
         limits:
@@ -25,5 +26,3 @@ services:
     ulimits:
       nofile: 65536
     pids_limit: 2048
-    # Optional: remove network access if not needed
-    # network_mode: none

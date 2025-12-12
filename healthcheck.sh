@@ -1,11 +1,12 @@
 #!/bin/sh
 # Healthcheck: ensure checkpoint file exists and was updated recently
-if [ -z "$CONTAINER_ID" ]; then
-  echo "CONTAINER_ID not set"
-  exit 1
+# Uses CHECKPOINT_FILE env var or falls back to /data/checkpoint_{CONTAINER_ID}.json
+if [ -n "$CHECKPOINT_FILE" ]; then
+  f="$CHECKPOINT_FILE"
+else
+  f="/data/checkpoint_${CONTAINER_ID:-0}.json"
 fi
 
-f="/app/checkpoint_${CONTAINER_ID}.txt"
 [ -f "$f" ] || exit 1
 
 t=$(date +%s)

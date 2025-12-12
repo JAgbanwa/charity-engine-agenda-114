@@ -10,7 +10,9 @@ Quick build (local):
 docker build -t infinite-search:local .
 ```
 
-Run (example, mapping a host directory for persistence). The image defaults to running `main.py` from the repository root. You can override the command at runtime to run a different script if needed.
+Run (example, mapping a host directory for persistence). The container prefers a writable `/data` mount for checkpoints and solutions; it will copy `main.py` into `/data` on startup if `/data` is writable. This avoids masking the image's `/app` directory.
+
+Example run (recommended):
 
 ```bash
 docker run -d \
@@ -21,17 +23,21 @@ docker run -d \
   --memory-swap=8g \
   --ulimit nofile=65536:65536 \
   --pids-limit=2048 \
-  --read-only \
-  --tmpfs /tmp:rw,size=256m \
-  -v $(pwd)/data/container_0:/app \
+  -v $(pwd)/data/container_0:/data \
   -e CONTAINER_ID=0 \
   -e TOTAL_CONTAINERS=10000 \
-  -e JUMP_SIZE=1000000 \
+  -e CHECK_INTERVAL=1000 \
   infinite-search:local
+```
 
+If `/data` is writable the container will set `CHECKPOINT_FILE` and `SOLUTIONS_FILE` to files under `/data` automatically. To explicitly override these paths, pass env vars:
 
 ```bash
-docker run --rm -v $(pwd)/data/container_0:/app infinite-search:local python main.py
+docker run --rm -v $(pwd)/data/container_0:/data \
+  -e CONTAINER_ID=0 \
+  -e CHECKPOINT_FILE=/data/checkpoint_0.json \
+  -e SOLUTIONS_FILE=/data/solutions.txt \
+  infinite-search:local
 ```
 ```
 

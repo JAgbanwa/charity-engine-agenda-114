@@ -14,17 +14,18 @@ RUN adduser --disabled-password --gecos "" --home /home/appuser appuser \
 
 WORKDIR /app
 
-# Copy the active entrypoint script and healthcheck
+# Copy the active entrypoint script, wrapper and healthcheck
 COPY --chown=appuser:appuser main.py /app/main.py
+COPY --chown=appuser:appuser run.sh /app/run.sh
 COPY --chown=appuser:appuser healthcheck.sh /app/healthcheck.sh
 
-RUN chmod +x /app/healthcheck.sh
+RUN chmod +x /app/healthcheck.sh /app/run.sh
 
-VOLUME ["/app"]
+# Persistent data mount (for checkpoints/solutions)
+VOLUME ["/data"]
 
 USER appuser
 
-# Use exec form so signals are forwarded
+# Use exec form so signals are forwarded. The wrapper will prefer /data for persistence.
 HEALTHCHECK --interval=10m --timeout=10s --start-period=3m --retries=3 CMD ["/app/healthcheck.sh"]
-## Default: run the improved code file. If you prefer the original script, override the CMD.
-CMD ["python", "main.py"]
+CMD ["/app/run.sh"]
