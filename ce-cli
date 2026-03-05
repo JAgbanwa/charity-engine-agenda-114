@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# ce-cli wrapper — runs the Linux64 ce-cli binary inside a Docker container
+# Transparent: all arguments are passed through unchanged.
+# Required on macOS (no native ce-cli binary exists for macOS).
+set -euo pipefail
+
+BINARY="/tmp/ce-cli"
+IMAGE="debian:bookworm-slim"
+
+if [ ! -f "$BINARY" ]; then
+  echo "Downloading ce-cli..."
+  curl -fsSL -o "$BINARY" \
+    "https://github.com/GridRepublic/ce-cli/releases/download/2024.3.29/ce-cli-2024.3.29-linux64"
+fi
+
+# Run via Debian x86_64 container (Apple Silicon via Rosetta emulation)
+exec docker run --rm -i \
+  --platform linux/amd64 \
+  -v "$BINARY:/tmp/ce-cli-bin" \
+  -v "$(pwd):/work" \
+  -w /work \
+  "$IMAGE" \
+  /bin/bash -c "cp /tmp/ce-cli-bin /usr/local/bin/ce-cli && chmod +x /usr/local/bin/ce-cli && ce-cli $(printf '%q ' "$@")"
