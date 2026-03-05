@@ -8,10 +8,7 @@ services:
     environment:
       - CONTAINER_ID=0
       - TOTAL_CONTAINERS=10000
-      - JUMP_SIZE=1000000
       - PYTHONUNBUFFERED=1
-      # SCRIPT defaults to the workspace file named "improved code"; can override if desired
-      - SCRIPT=improved code
     volumes:
       # Mount a host directory to /data so the image's /app remains available at startup.
       - ./data/container_0:/data
