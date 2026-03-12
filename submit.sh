@@ -51,10 +51,13 @@ ELLIPTIC=false                        # if true, submit elliptic_worker.py jobs
 GMP=false                             # if true, submit worker_gmp.py (10^30 capable)
 PARI=false                            # if true, submit worker_pari.py (PARI/GP, provably complete)
 EC19N=false                           # if true, submit ec19n_worker.py (new equation)
+EC19N_FOREVER=false                   # if true, continuously submit EC19N batches forever
 M_COUNT=50                            # m-steps per elliptic/GMP/PARI job
 N_COUNT=500                           # n-values per ec19n job
 N_START_VAL=1                         # first |n| value for ec19n mode
 N_NEGATIVES=false                     # if true, pass --negatives to ec19n_worker
+STATE_FILE=".ec19n_state"             # checkpoint for --ec19n-forever mode
+SLEEP_SECONDS=3                       # pause between forever-batches
 X_RANGE=1000000                       # x-range per m value (elliptic mode)
 X_WINDOW=1000000                      # x half-window (GMP mode)
 M_START_IDX=0                         # first m-step index (elliptic mode)
@@ -74,9 +77,12 @@ while [[ $# -gt 0 ]]; do
     --gmp)         GMP=true;           shift ;;
     --pari)        PARI=true;          shift ;;
     --ec19n)       EC19N=true;         shift ;;
+    --ec19n-forever) EC19N=true; EC19N_FOREVER=true; shift ;;
     --n-count)     N_COUNT="$2";       shift 2 ;;
     --n-start-val) N_START_VAL="$2";   shift 2 ;;
     --n-negatives) N_NEGATIVES=true;   shift ;;
+    --state-file)  STATE_FILE="$2";    shift 2 ;;
+    --sleep)       SLEEP_SECONDS="$2"; shift 2 ;;
     --m-count)     M_COUNT="$2";       shift 2 ;;
     --x-range)     X_RANGE="$2";       shift 2 ;;
     --x-window)    X_WINDOW="$2";      shift 2 ;;
@@ -124,6 +130,8 @@ if [[ "$EC19N" == "true" ]]; then
   echo "║  n-count/job: $N_COUNT"
   echo "║  n-start-val: $N_START_VAL"
   echo "║  negatives:   $N_NEGATIVES"
+  echo "║  forever:     $EC19N_FOREVER"
+  echo "║  state-file:  $STATE_FILE"
   echo "║  Parallel:    $PARALLEL_SLOTS"
   echo "║  Dry run:     $DRY_RUN"
   echo "╚══════════════════════════════════════════════════════════════╝"
@@ -236,6 +244,58 @@ export -f submit_job
 export COUNT M_COUNT X_RANGE X_WINDOW IMAGE CE_AUTH_KEY DRY_RUN USE_INPUT_FILE ELLIPTIC GMP PARI EC19N N_COUNT N_NEGATIVES CE_CLI
 
 if [[ "$EC19N" == "true" ]]; then
+  if [[ "$EC19N_FOREVER" == "true" ]]; then
+    # Continuous EC19N mode: repeatedly submit JOBS jobs, then advance N_START_VAL.
+    # State file format: single integer (next N_START_VAL)
+    if [[ -f "$STATE_FILE" ]]; then
+      N_START_VAL="$(tr -d '[:space:]' < "$STATE_FILE")"
+      echo "[ec19n-forever] Resuming from state file: next n-start=$N_START_VAL"
+    else
+      echo "$N_START_VAL" > "$STATE_FILE"
+      echo "[ec19n-forever] Initializing state file at n-start=$N_START_VAL"
+    fi
+
+    while true; do
+      BATCH_START="$N_START_VAL"
+      BATCH_MAX=$((BATCH_START + JOBS * N_COUNT - 1))
+      echo ""
+      echo "[ec19n-forever] Submitting batch: |n| in [$BATCH_START, $BATCH_MAX]"
+
+      if command -v parallel &>/dev/null && [[ "$PARALLEL_SLOTS" -gt 1 ]]; then
+        python3 -c "
+start = $BATCH_START
+step  = $N_COUNT
+for i in range($JOBS):
+    print(start + i * step)
+" | parallel -j "$PARALLEL_SLOTS" submit_job {}
+      else
+        python3 -c "
+start = $BATCH_START
+step  = $N_COUNT
+for i in range($JOBS):
+    print(start + i * step)
+" | while read n_val; do
+          submit_job "$n_val"
+        done
+      fi
+
+      N_START_VAL=$((BATCH_MAX + 1))
+      echo "$N_START_VAL" > "$STATE_FILE"
+      echo "[ec19n-forever] Batch done. Next n-start=$N_START_VAL (saved to $STATE_FILE)"
+
+      if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[ec19n-forever] Dry-run complete; stopping after one batch."
+        break
+      fi
+
+      sleep "$SLEEP_SECONDS"
+    done
+
+    echo ""
+    echo "Done. EC19N forever loop exited."
+    exit 0
+  fi
+
   # EC19N mode: n values stride by N_COUNT per job
   if command -v parallel &>/dev/null && [[ "$PARALLEL_SLOTS" -gt 1 ]]; then
     python3 -c "
