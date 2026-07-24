@@ -20,18 +20,14 @@ jobs:
           python-version: '3.11'
       - name: Install renderer dependencies
         run: python -m pip install --upgrade edge-tts numpy requests
-      - name: Render Ghanaian narration shard 4
-        env:
-          SHARD_INDEX: '3'
-          SHARD_COUNT: '4'
-          OUTPUT_NAME: 'topology_ghanaian_shard_4.m4a'
-        run: python tools/render_topology_ghanaian_abena.py
+      - name: Render Ghanaian narration shard 4 without FFmpeg
+        run: python tools/render_topology_ghanaian_shard4_pure.py
       - name: Upload narration shard
         uses: actions/upload-artifact@v4
         with:
           name: topology-ghanaian-male-english-shard-4
           path: |
-            output/topology_ghanaian_shard_4.m4a
+            output/topology_ghanaian_shard_4.wav
             output/topology_ghanaian_shard_4.json
           if-no-files-found: error
           retention-days: 1
