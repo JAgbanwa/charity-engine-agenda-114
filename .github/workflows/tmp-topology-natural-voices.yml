@@ -1,0 +1,56 @@
+name: Temporary topology natural voice render
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Render ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: European male English
+            voice: en-GB-RyanNeural
+            output: topology_european_male_english.m4a
+            artifact: topology-european-male-english
+          - label: Ghanaian male English
+            voice: en-GH-KofiNeural
+            output: topology_ghanaian_male_english.m4a
+            artifact: topology-ghanaian-male-english
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install renderer dependencies
+        run: python -m pip install --upgrade edge-tts numpy
+      - name: Fetch the temporary renderer
+        run: curl -fsSL https://raw.githubusercontent.com/JAgbanwa/charity-engine-agenda-114/6c92c0ccd22af50ab36a11731bd2015bc424e78c/tools/render_topology_voices.py -o render_topology_voices.py
+      - name: Ensure ffmpeg is available
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Render caption-aligned narration
+        env:
+          VOICE: ${{ matrix.voice }}
+          OUTPUT_NAME: ${{ matrix.output }}
+          TTS_RATE: '+0%'
+          TTS_CONCURRENCY: '3'
+        run: python render_topology_voices.py
+      - name: Upload narration master
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            output/${{ matrix.output }}
+            output/*.json
+          if-no-files-found: error
+          retention-days: 1
