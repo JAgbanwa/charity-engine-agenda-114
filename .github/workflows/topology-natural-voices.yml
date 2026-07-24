@@ -9,26 +9,10 @@ permissions:
   contents: read
 
 jobs:
-  render:
-    name: Render Ghanaian male English shard ${{ matrix.number }}
+  render-shard-4:
+    name: Render Ghanaian male English shard 4
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - index: 0
-            number: 1
-            artifact: topology-ghanaian-male-english-shard-1
-          - index: 1
-            number: 2
-            artifact: topology-ghanaian-male-english-shard-2
-          - index: 2
-            number: 3
-            artifact: topology-ghanaian-male-english-shard-3
-          - index: 3
-            number: 4
-            artifact: topology-ghanaian-male-english-shard-4
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,24 +20,18 @@ jobs:
           python-version: '3.11'
       - name: Install renderer dependencies
         run: python -m pip install --upgrade edge-tts numpy requests
-      - name: Ensure ffmpeg is available
-        run: |
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg
-          fi
-      - name: Render Ghanaian narration shard
+      - name: Render Ghanaian narration shard 4
         env:
-          SHARD_INDEX: '${{ matrix.index }}'
+          SHARD_INDEX: '3'
           SHARD_COUNT: '4'
-          OUTPUT_NAME: 'topology_ghanaian_shard_${{ matrix.number }}.m4a'
+          OUTPUT_NAME: 'topology_ghanaian_shard_4.m4a'
         run: python tools/render_topology_ghanaian_abena.py
       - name: Upload narration shard
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
+          name: topology-ghanaian-male-english-shard-4
           path: |
-            output/topology_ghanaian_shard_${{ matrix.number }}.m4a
-            output/topology_ghanaian_shard_${{ matrix.number }}.json
+            output/topology_ghanaian_shard_4.m4a
+            output/topology_ghanaian_shard_4.json
           if-no-files-found: error
           retention-days: 1
